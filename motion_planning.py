@@ -120,15 +120,26 @@ class MotionPlanning(Drone):
         self.target_position[2] = TARGET_ALTITUDE
 
         # TODO: read lat0, lon0 from colliders into floating point values
-        
+        with open("colliders.csv") as f:
+            line = f.readline()
+            lon = line.split(",")[0]
+            lat = line.split(",")[1]
+            lon0 = float(lon.split()[1])
+            lat0 = float(lat.split()[1])
+
         # TODO: set home position to (lon0, lat0, 0)
+        # self.set_home_position(lon0, lat0, 0)
 
         # TODO: retrieve current global position
+        current_global = self.global_position
  
         # TODO: convert to current local position using global_to_local()
-        
+        current_local = global_to_local(current_global, self.global_home)
+        print('current local{0}'.format(current_local))
+
         print('global home {0}, position {1}, local position {2}'.format(self.global_home, self.global_position,
                                                                          self.local_position))
+
         # Read in obstacle map
         data = np.loadtxt('colliders.csv', delimiter=',', dtype='Float64', skiprows=2)
         
@@ -138,10 +149,16 @@ class MotionPlanning(Drone):
         # Define starting point on the grid (this is just grid center)
         grid_start = (-north_offset, -east_offset)
         # TODO: convert start position to current position rather than map center
+        # grid_start = (int(current_local[0]), int(current_local[1]))
         
         # Set goal as some arbitrary position on the grid
         grid_goal = (-north_offset + 10, -east_offset + 10)
         # TODO: adapt to set goal as latitude / longitude position and convert
+        
+        # goal_latitude = 37.792480
+        # goal_longitude = -122.397450
+        # goal = global_to_local(self.global_position, self.global_home)
+        # grid_goal = (goal[0], goal[1])
 
         # Run A* to find a path from start to goal
         # TODO: add diagonal motions with a cost of sqrt(2) to your A* implementation
@@ -150,6 +167,7 @@ class MotionPlanning(Drone):
         path, _ = a_star(grid, heuristic, grid_start, grid_goal)
         # TODO: prune path to minimize number of waypoints
         # TODO (if you're feeling ambitious): Try a different approach altogether!
+
 
         # Convert path to waypoints
         waypoints = [[p[0] + north_offset, p[1] + east_offset, TARGET_ALTITUDE, 0] for p in path]
