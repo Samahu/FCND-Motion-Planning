@@ -5,7 +5,7 @@ from enum import Enum, auto
 
 import numpy as np
 
-from planning_utils import a_star, heuristic, create_grid
+from planning_utils import a_star, heuristic, create_grid, prune_path
 from udacidrone import Drone
 from udacidrone.connection import MavlinkConnection
 from udacidrone.messaging import MsgID
@@ -41,6 +41,8 @@ class MotionPlanning(Drone):
         self.register_callback(MsgID.STATE, self.state_callback)
 
     def local_position_callback(self):
+        # print ("Local Position: ", self.local_position)
+        
         if self.flight_state == States.TAKEOFF:
             if -1.0 * self.local_position[2] > 0.95 * self.target_position[2]:
                 self.waypoint_transition()
@@ -120,6 +122,9 @@ class MotionPlanning(Drone):
         self.target_position[2] = TARGET_ALTITUDE
 
         # TODO: read lat0, lon0 from colliders into floating point values
+        lon0 = 0
+        lat0 = 0
+        
         with open("colliders.csv") as f:
             line = f.readline()
             lon = line.split(",")[0]
@@ -147,18 +152,21 @@ class MotionPlanning(Drone):
         grid, north_offset, east_offset = create_grid(data, TARGET_ALTITUDE, SAFETY_DISTANCE)
         print("North offset = {0}, east offset = {1}".format(north_offset, east_offset))
         # Define starting point on the grid (this is just grid center)
-        grid_start = (-north_offset, -east_offset)
+        # DISABLED -> grid_start = (-north_offset, -east_offset)
         # TODO: convert start position to current position rather than map center
-        # grid_start = (int(current_local[0]), int(current_local[1]))
+        grid_start = (int(current_local[0]-north_offset), int(current_local[1]-east_offset))
         
         # Set goal as some arbitrary position on the grid
-        grid_goal = (-north_offset + 10, -east_offset + 10)
+        # DISABLED -> grid_goal = (-north_offset + 10, -east_offset + 10)
         # TODO: adapt to set goal as latitude / longitude position and convert
+        
         
         # goal_latitude = 37.792480
         # goal_longitude = -122.397450
         # goal = global_to_local(self.global_position, self.global_home)
-        # grid_goal = (goal[0], goal[1])
+        free_cells_indices =  np.where(grid == 0)
+        free_cell_idx = np.random.randint(len(free_cells_indices[0]))
+        grid_goal = (free_cells_indices[0][free_cell_idx], free_cells_indices[1][free_cell_idx])
 
         # Run A* to find a path from start to goal
         # TODO: add diagonal motions with a cost of sqrt(2) to your A* implementation
@@ -167,10 +175,14 @@ class MotionPlanning(Drone):
         path, _ = a_star(grid, heuristic, grid_start, grid_goal)
         # TODO: prune path to minimize number of waypoints
         # TODO (if you're feeling ambitious): Try a different approach altogether!
+        
+        print("length of path before pruning = ", len(path))
+        pruned_path = prune_path(path)  # Use collinearity test to prune the path
+        print("length of pruned path = ", len(pruned_path))
 
 
         # Convert path to waypoints
-        waypoints = [[p[0] + north_offset, p[1] + east_offset, TARGET_ALTITUDE, 0] for p in path]
+        waypoints = [[p[0] + north_offset, p[1] + east_offset, TARGET_ALTITUDE, 0] for p in pruned_path]
         # Set self.waypoints
         self.waypoints = waypoints
         # TODO: send waypoints to sim (this is just for visualization of waypoints)

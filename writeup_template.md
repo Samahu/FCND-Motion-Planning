@@ -48,22 +48,22 @@ These scripts contain a basic planning implementation that includes...
 - A implementation of a-star algorithm
 - A heuristic function for a-start that is based on euclidean distance
 
-And here's a lovely image of my results (ok this image has nothing to do with it, but it's a nice example of how to include images in your writeup!)
-![Top Down View](./misc/high_up.png)
-
-Here's | A | Snappy | Table
---- | --- | --- | ---
-1 | `highlight` | **bold** | 7.41
-2 | a | b | c
-3 | *italic* | text | 403
-4 | 2 | 3 | abcd
-
 ### Implementing Your Path Planning Algorithm
 
 #### 1. Set your global home position
 Here students should read the first line of the csv file, extract lat0 and lon0 as floating point values and use the self.set_home_position() method to set global home. Explain briefly how you accomplished this in your code.
 
-Implemented in line 123
+This has been implemented as follows
+```
+    with open("colliders.csv") as f:
+            line = f.readline()
+            lon = line.split(",")[0]
+            lat = line.split(",")[1]
+            lon0 = float(lon.split()[1])
+            lat0 = float(lat.split()[1])
+```
+
+and then a call to 
 
 And here is a lovely picture of our downtown San Francisco environment from above!
 ![Map of SF](./misc/map.png)
@@ -79,12 +79,17 @@ Meanwhile, here's a picture of me flying through the trees!
 #### 3. Set grid start position from local position
 This is another step in adding flexibility to the start location. As long as it works you're good to go!
 
-Implemented in line 152
+I did the following 3 steps:
+current_global = self.global_position
+current_local = global_to_local(current_global, self.global_home)
+grid_start = (int(current_local[0]-north_offset), int(current_local[1]-east_offset))
 
 #### 4. Set grid goal position from geodetic coords
 This step is to add flexibility to the desired goal location. Should be able to choose any (lat, lon) within the map and have it rendered to a goal location on the grid.
 
-Implemented in line 157
+free_cells_indices =  np.where(grid == 0)
+free_cell_idx = np.random.randint(len(free_cells_indices[0]))
+grid_goal = (free_cells_indices[0][free_cell_idx], free_cells_indices[1][free_cell_idx])
 
 #### 5. Modify A* to include diagonal motion (or replace A* altogether)
 Minimal requirement here is to modify the code in planning_utils() to update the A* implementation to include diagonal motions on the grid that have a cost of sqrt(2), but more creative solutions are welcome. Explain the code you used to accomplish this step.
@@ -95,6 +100,7 @@ and also lines 93-100 to check for boundaries
 #### 6. Cull waypoints 
 For this step you can use a collinearity test or ray tracing method like Bresenham. The idea is simply to prune your path of unnecessary waypoints. Explain the code you used to accomplish this step.
 
+Add a method in planning_utils called prune_path, the method uses collinearity test for any consecutive 3 points and removes any middle point that falls exactly between the first and third.
 
 
 ### Execute the flight
