@@ -63,7 +63,8 @@ This has been implemented as follows
             lat0 = float(lat.split()[1])
 ```
 
-and then a call to 
+and then a call to
+self.set_home_position(lon0, lat0, 0)
 
 And here is a lovely picture of our downtown San Francisco environment from above!
 ![Map of SF](./misc/map.png)
@@ -80,22 +81,43 @@ Meanwhile, here's a picture of me flying through the trees!
 This is another step in adding flexibility to the start location. As long as it works you're good to go!
 
 I did the following 3 steps:
+```
 current_global = self.global_position
 current_local = global_to_local(current_global, self.global_home)
 grid_start = (int(current_local[0]-north_offset), int(current_local[1]-east_offset))
+```
 
 #### 4. Set grid goal position from geodetic coords
 This step is to add flexibility to the desired goal location. Should be able to choose any (lat, lon) within the map and have it rendered to a goal location on the grid.
 
+```
 free_cells_indices =  np.where(grid == 0)
 free_cell_idx = np.random.randint(len(free_cells_indices[0]))
 grid_goal = (free_cells_indices[0][free_cell_idx], free_cells_indices[1][free_cell_idx])
+```
 
 #### 5. Modify A* to include diagonal motion (or replace A* altogether)
 Minimal requirement here is to modify the code in planning_utils() to update the A* implementation to include diagonal motions on the grid that have a cost of sqrt(2), but more creative solutions are welcome. Explain the code you used to accomplish this step.
 
 I have modified lines 59-62 (adding new enum values with sqrt(2) cost)
-and also lines 93-100 to check for boundaries
+```
+    NORTH_WEST = (-1, -1, sqrt(2))
+    NORTH_EAST = (-1, 1, sqrt(2))
+    SOUTH_WEST = (1, -1, sqrt(2))
+    SOUTH_EAST = (1, 1, sqrt(2))
+```
+
+and also lines 93-100 to check for boundaries in valid_actions method:
+```
+    if x - 1 < 0 or y - 1 < 0 or grid[x - 1, y - 1] == 1:
+        valid_actions.remove(Action.NORTH_WEST)
+    if x + 1 > n or y + 1 > n or grid[x + 1, y + 1] == 1:
+        valid_actions.remove(Action.SOUTH_EAST)
+    if x + 1 > n or y - 1 < 0 or grid[x + 1, y - 1] == 1:
+        valid_actions.remove(Action.SOUTH_WEST)
+    if x - 1 > n or y + 1 > m or grid[x - 1, y + 1] == 1:
+        valid_actions.remove(Action.NORTH_EAST)
+```
 
 #### 6. Cull waypoints 
 For this step you can use a collinearity test or ray tracing method like Bresenham. The idea is simply to prune your path of unnecessary waypoints. Explain the code you used to accomplish this step.
